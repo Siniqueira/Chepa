@@ -10,6 +10,8 @@ local AimbotFOV = 60
 local AimbotKey = Enum.KeyCode.E
 local AimbotKeyType = "KeyCode"
 local ESPEnabled = true
+local ESPBoxEnabled = true      -- toggle da caixa
+local ESPHealthEnabled = true   -- toggle da barra de vida
 local AimbotEnabled = true
 local panelVisible = true
 local MaxAimbotDistance = 200
@@ -62,8 +64,8 @@ screenGui.ResetOnSpawn = false
 screenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
  
 local mainFrame = Instance.new("Frame")
-mainFrame.Size = UDim2.new(0, 400, 0, 490)
-mainFrame.Position = UDim2.new(0, 20, 0.5, -245)
+mainFrame.Size = UDim2.new(0, 400, 0, 570)
+mainFrame.Position = UDim2.new(0, 20, 0.5, -285)
 mainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 mainFrame.BorderSizePixel = 0
 mainFrame.AnchorPoint = Vector2.new(0, 0.5)
@@ -106,13 +108,15 @@ title.TextColor3 = Color3.fromRGB(255, 255, 255)
 title.Font = Enum.Font.GothamBold
 title.TextSize = 20
  
-local espToggle    = createButton(mainFrame, 48, "ESP: ON")
-local aimbotToggle = createButton(mainFrame, 92, "Aimbot: ON")
+local espToggle       = createButton(mainFrame, 48,  "ESP: ON")
+local espBoxToggle    = createButton(mainFrame, 92,  "Caixa ESP: ON")
+local espHealthToggle = createButton(mainFrame, 136, "Barra de Vida: ON")
+local aimbotToggle    = createButton(mainFrame, 180, "Aimbot: ON")
  
 -- FOV
 local fovBox = Instance.new("TextBox", mainFrame)
 fovBox.Size = UDim2.new(1, -24, 0, 36)
-fovBox.Position = UDim2.new(0, 12, 0, 140)
+fovBox.Position = UDim2.new(0, 12, 0, 228)
 fovBox.PlaceholderText = "FOV (ex: 120)"
 fovBox.Text = tostring(AimbotFOV)
 fovBox.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
@@ -134,7 +138,7 @@ end)
 -- Parte do corpo
 local partDropdownLabel = Instance.new("TextLabel", mainFrame)
 partDropdownLabel.Size = UDim2.new(1, -24, 0, 24)
-partDropdownLabel.Position = UDim2.new(0, 12, 0, 182)
+partDropdownLabel.Position = UDim2.new(0, 12, 0, 270)
 partDropdownLabel.BackgroundTransparency = 1
 partDropdownLabel.TextColor3 = Color3.fromRGB(230, 230, 230)
 partDropdownLabel.Font = Enum.Font.Gotham
@@ -143,7 +147,7 @@ partDropdownLabel.Text = "Prioridade de Parte do Corpo:"
  
 local partDropdown = Instance.new("TextBox", mainFrame)
 partDropdown.Size = UDim2.new(1, -24, 0, 30)
-partDropdown.Position = UDim2.new(0, 12, 0, 206)
+partDropdown.Position = UDim2.new(0, 12, 0, 294)
 partDropdown.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
 partDropdown.TextColor3 = Color3.fromRGB(230, 230, 230)
 partDropdown.Font = Enum.Font.Gotham
@@ -168,7 +172,7 @@ end)
 -- Slider de velocidade
 local speedLabel = Instance.new("TextLabel", mainFrame)
 speedLabel.Size = UDim2.new(1, -24, 0, 24)
-speedLabel.Position = UDim2.new(0, 12, 0, 244)
+speedLabel.Position = UDim2.new(0, 12, 0, 332)
 speedLabel.BackgroundTransparency = 1
 speedLabel.TextColor3 = Color3.fromRGB(230, 230, 230)
 speedLabel.Font = Enum.Font.Gotham
@@ -177,7 +181,7 @@ speedLabel.Text = "Velocidade do Aimbot: " .. math.floor(AimSpeed * 100) .. "%"
  
 local speedSlider = Instance.new("Frame", mainFrame)
 speedSlider.Size = UDim2.new(1, -24, 0, 24)
-speedSlider.Position = UDim2.new(0, 12, 0, 268)
+speedSlider.Position = UDim2.new(0, 12, 0, 356)
 speedSlider.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
  
 local fill = Instance.new("Frame", speedSlider)
@@ -205,7 +209,7 @@ UserInputService.InputChanged:Connect(function(input)
 end)
  
 -- Botão de tecla
-local keyButton = createButton(mainFrame, 330, "Key: " .. AimbotKey.Name)
+local keyButton = createButton(mainFrame, 418, "Key: " .. AimbotKey.Name)
  
 keyButton.MouseButton1Click:Connect(function()
     keyButton.Text = "Pressione uma tecla..."
@@ -230,7 +234,7 @@ end)
 -- Alcance máximo
 local distanceBox = Instance.new("TextBox", mainFrame)
 distanceBox.Size = UDim2.new(1, -24, 0, 36)
-distanceBox.Position = UDim2.new(0, 12, 0, 420)
+distanceBox.Position = UDim2.new(0, 12, 0, 522)
 distanceBox.PlaceholderText = "Alcance Máx (ex: 100)"
 distanceBox.Text = tostring(MaxAimbotDistance)
 distanceBox.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
@@ -252,6 +256,16 @@ end)
 espToggle.MouseButton1Click:Connect(function()
     ESPEnabled = not ESPEnabled
     espToggle.Text = "ESP: " .. (ESPEnabled and "ON" or "OFF")
+end)
+ 
+espBoxToggle.MouseButton1Click:Connect(function()
+    ESPBoxEnabled = not ESPBoxEnabled
+    espBoxToggle.Text = "Caixa ESP: " .. (ESPBoxEnabled and "ON" or "OFF")
+end)
+ 
+espHealthToggle.MouseButton1Click:Connect(function()
+    ESPHealthEnabled = not ESPHealthEnabled
+    espHealthToggle.Text = "Barra de Vida: " .. (ESPHealthEnabled and "ON" or "OFF")
 end)
  
 aimbotToggle.MouseButton1Click:Connect(function()
@@ -278,6 +292,7 @@ local ESPObjects = {}
  
 local function createESP(player)
     if player == LocalPlayer then return end
+ 
     local nameTag = Drawing.new("Text")
     nameTag.Size = 16
     nameTag.Center = true
@@ -295,7 +310,23 @@ local function createESP(player)
         table.insert(lines, ln)
     end
  
-    ESPObjects[player] = { Name = nameTag, Box = lines }
+    -- Barra de vida: fundo (vermelho) + frente (verde)
+    local healthBg = Drawing.new("Line")
+    healthBg.Thickness = 4
+    healthBg.Color = Color3.fromRGB(180, 0, 0)
+    healthBg.Visible = false
+ 
+    local healthFill = Drawing.new("Line")
+    healthFill.Thickness = 4
+    healthFill.Color = Color3.fromRGB(0, 255, 0)
+    healthFill.Visible = false
+ 
+    ESPObjects[player] = {
+        Name       = nameTag,
+        Box        = lines,
+        HealthBg   = healthBg,
+        HealthFill = healthFill,
+    }
 end
  
 local function removeESP(player)
@@ -303,6 +334,8 @@ local function removeESP(player)
     if esp then
         esp.Name:Remove()
         for _, ln in ipairs(esp.Box) do ln:Remove() end
+        esp.HealthBg:Remove()
+        esp.HealthFill:Remove()
         ESPObjects[player] = nil
     end
 end
@@ -392,9 +425,10 @@ RunService.RenderStepped:Connect(function()
                         local origin     = Camera.CFrame.Position
                         local behindWall = hasWallBetween(origin, root.Position, char)
  
+                        -- Cor dinâmica por distância ou parede
                         local color
                         if behindWall then
-                            color = Color3.fromRGB(255, 165, 0) -- laranja = atrás de parede
+                            color = Color3.fromRGB(255, 165, 0)
                         else
                             local dist = localRoot and (localRoot.Position - root.Position).Magnitude or 0
                             local t    = math.clamp(dist / 300, 0, 1)
@@ -407,29 +441,65 @@ RunService.RenderStepped:Connect(function()
                         esp.Name.Color    = color
                         esp.Name.Visible  = true
  
-                        -- Caixa
+                        -- Dimensões da caixa
                         local height = math.abs(v1.Y - v2.Y) * 2
                         local width  = height / 2
                         local x, y   = v2.X, v2.Y
                         local hw     = width / 2
  
-                        local ln = esp.Box
-                        ln[1].From, ln[1].To = Vector2.new(x - hw, y - height), Vector2.new(x + hw, y - height)
-                        ln[2].From, ln[2].To = Vector2.new(x + hw, y - height), Vector2.new(x + hw, y)
-                        ln[3].From, ln[3].To = Vector2.new(x + hw, y),          Vector2.new(x - hw, y)
-                        ln[4].From, ln[4].To = Vector2.new(x - hw, y),          Vector2.new(x - hw, y - height)
- 
-                        for _, l in ipairs(ln) do
-                            l.Color   = color
-                            l.Visible = true
+                        -- Caixa ESP
+                        if ESPBoxEnabled then
+                            local ln = esp.Box
+                            ln[1].From, ln[1].To = Vector2.new(x - hw, y - height), Vector2.new(x + hw, y - height)
+                            ln[2].From, ln[2].To = Vector2.new(x + hw, y - height), Vector2.new(x + hw, y)
+                            ln[3].From, ln[3].To = Vector2.new(x + hw, y),          Vector2.new(x - hw, y)
+                            ln[4].From, ln[4].To = Vector2.new(x - hw, y),          Vector2.new(x - hw, y - height)
+                            for _, l in ipairs(ln) do
+                                l.Color   = color
+                                l.Visible = true
+                            end
+                        else
+                            for _, l in ipairs(esp.Box) do l.Visible = false end
                         end
+ 
+                        -- Barra de vida (lado esquerdo da caixa)
+                        if ESPHealthEnabled then
+                            local maxHp     = hum.MaxHealth > 0 and hum.MaxHealth or 100
+                            local hpRatio   = math.clamp(hum.Health / maxHp, 0, 1)
+                            local barX      = x - hw - 6        -- 6px à esquerda da caixa
+                            local barTop    = y - height
+                            local barBot    = y
+ 
+                            -- Fundo (vermelho, altura total)
+                            esp.HealthBg.From    = Vector2.new(barX, barTop)
+                            esp.HealthBg.To      = Vector2.new(barX, barBot)
+                            esp.HealthBg.Visible = true
+ 
+                            -- Preenchimento (verde, proporcional ao HP)
+                            local fillBot = barTop + height * (1 - hpRatio)
+                            local hpColor = Color3.fromRGB(255 * (1 - hpRatio), 255 * hpRatio, 0)
+                            esp.HealthFill.From    = Vector2.new(barX, fillBot)
+                            esp.HealthFill.To      = Vector2.new(barX, barBot)
+                            esp.HealthFill.Color   = hpColor
+                            esp.HealthFill.Visible = true
+                        else
+                            esp.HealthBg.Visible   = false
+                            esp.HealthFill.Visible = false
+                        end
+ 
                     else
+                        -- Fora da tela
                         esp.Name.Visible = false
                         for _, l in ipairs(esp.Box) do l.Visible = false end
+                        esp.HealthBg.Visible   = false
+                        esp.HealthFill.Visible = false
                     end
                 else
+                    -- ESP desligado ou jogador morto
                     esp.Name.Visible = false
                     for _, l in ipairs(esp.Box) do l.Visible = false end
+                    esp.HealthBg.Visible   = false
+                    esp.HealthFill.Visible = false
                 end
             end
         end
