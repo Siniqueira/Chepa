@@ -11,7 +11,6 @@ local AimbotKey = Enum.KeyCode.E
 local AimbotKeyType = "KeyCode"
 local ESPEnabled = true
 local AimbotEnabled = true
-local TeamCheck = true
 local panelVisible = true
 local MaxAimbotDistance = 200
 local AimPartName = "Head"
@@ -28,14 +27,23 @@ local Whitelist = {
     [7717762280] = true, -- Raya
 }
  
+-- Bloqueia quem não está na whitelist
+if not Whitelist[LocalPlayer.UserId] then
+    return
+end
+ 
 -- Funções locais
 local function isWhitelisted(player)
     return Whitelist[player.UserId] == true
 end
  
-local function isEnemy(player)
-    if not player or not player.Team or not LocalPlayer.Team then return true end
-    return player.Team ~= LocalPlayer.Team
+local function hasWallBetween(from, to, targetChar)
+    local direction = to - from
+    local rayParams = RaycastParams.new()
+    rayParams.FilterDescendantsInstances = { LocalPlayer.Character, targetChar }
+    rayParams.FilterType = Enum.RaycastFilterType.Exclude
+    local result = workspace:Raycast(from, direction, rayParams)
+    return result ~= nil
 end
  
 -- Desenho do FOVCircle
@@ -54,8 +62,8 @@ screenGui.ResetOnSpawn = false
 screenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
  
 local mainFrame = Instance.new("Frame")
-mainFrame.Size = UDim2.new(0, 400, 0, 530)
-mainFrame.Position = UDim2.new(0, 20, 0.5, -265)
+mainFrame.Size = UDim2.new(0, 400, 0, 490)
+mainFrame.Position = UDim2.new(0, 20, 0.5, -245)
 mainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 mainFrame.BorderSizePixel = 0
 mainFrame.AnchorPoint = Vector2.new(0, 0.5)
@@ -98,14 +106,13 @@ title.TextColor3 = Color3.fromRGB(255, 255, 255)
 title.Font = Enum.Font.GothamBold
 title.TextSize = 20
  
-local espToggle       = createButton(mainFrame, 48,  "ESP: ON")
-local aimbotToggle    = createButton(mainFrame, 92,  "Aimbot: ON")
-local teamCheckToggle = createButton(mainFrame, 136, "TeamCheck: ON")
+local espToggle    = createButton(mainFrame, 48, "ESP: ON")
+local aimbotToggle = createButton(mainFrame, 92, "Aimbot: ON")
  
 -- FOV
 local fovBox = Instance.new("TextBox", mainFrame)
 fovBox.Size = UDim2.new(1, -24, 0, 36)
-fovBox.Position = UDim2.new(0, 12, 0, 180)
+fovBox.Position = UDim2.new(0, 12, 0, 140)
 fovBox.PlaceholderText = "FOV (ex: 120)"
 fovBox.Text = tostring(AimbotFOV)
 fovBox.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
@@ -127,7 +134,7 @@ end)
 -- Parte do corpo
 local partDropdownLabel = Instance.new("TextLabel", mainFrame)
 partDropdownLabel.Size = UDim2.new(1, -24, 0, 24)
-partDropdownLabel.Position = UDim2.new(0, 12, 0, 222)
+partDropdownLabel.Position = UDim2.new(0, 12, 0, 182)
 partDropdownLabel.BackgroundTransparency = 1
 partDropdownLabel.TextColor3 = Color3.fromRGB(230, 230, 230)
 partDropdownLabel.Font = Enum.Font.Gotham
@@ -136,7 +143,7 @@ partDropdownLabel.Text = "Prioridade de Parte do Corpo:"
  
 local partDropdown = Instance.new("TextBox", mainFrame)
 partDropdown.Size = UDim2.new(1, -24, 0, 30)
-partDropdown.Position = UDim2.new(0, 12, 0, 246)
+partDropdown.Position = UDim2.new(0, 12, 0, 206)
 partDropdown.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
 partDropdown.TextColor3 = Color3.fromRGB(230, 230, 230)
 partDropdown.Font = Enum.Font.Gotham
@@ -161,7 +168,7 @@ end)
 -- Slider de velocidade
 local speedLabel = Instance.new("TextLabel", mainFrame)
 speedLabel.Size = UDim2.new(1, -24, 0, 24)
-speedLabel.Position = UDim2.new(0, 12, 0, 284)
+speedLabel.Position = UDim2.new(0, 12, 0, 244)
 speedLabel.BackgroundTransparency = 1
 speedLabel.TextColor3 = Color3.fromRGB(230, 230, 230)
 speedLabel.Font = Enum.Font.Gotham
@@ -170,7 +177,7 @@ speedLabel.Text = "Velocidade do Aimbot: " .. math.floor(AimSpeed * 100) .. "%"
  
 local speedSlider = Instance.new("Frame", mainFrame)
 speedSlider.Size = UDim2.new(1, -24, 0, 24)
-speedSlider.Position = UDim2.new(0, 12, 0, 308)
+speedSlider.Position = UDim2.new(0, 12, 0, 268)
 speedSlider.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
  
 local fill = Instance.new("Frame", speedSlider)
@@ -198,7 +205,7 @@ UserInputService.InputChanged:Connect(function(input)
 end)
  
 -- Botão de tecla
-local keyButton = createButton(mainFrame, 370, "Key: " .. AimbotKey.Name)
+local keyButton = createButton(mainFrame, 330, "Key: " .. AimbotKey.Name)
  
 keyButton.MouseButton1Click:Connect(function()
     keyButton.Text = "Pressione uma tecla..."
@@ -223,7 +230,7 @@ end)
 -- Alcance máximo
 local distanceBox = Instance.new("TextBox", mainFrame)
 distanceBox.Size = UDim2.new(1, -24, 0, 36)
-distanceBox.Position = UDim2.new(0, 12, 0, 460)
+distanceBox.Position = UDim2.new(0, 12, 0, 420)
 distanceBox.PlaceholderText = "Alcance Máx (ex: 100)"
 distanceBox.Text = tostring(MaxAimbotDistance)
 distanceBox.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
@@ -253,12 +260,7 @@ aimbotToggle.MouseButton1Click:Connect(function()
     FOVCircle.Visible = AimbotEnabled and panelVisible
 end)
  
-teamCheckToggle.MouseButton1Click:Connect(function()
-    TeamCheck = not TeamCheck
-    teamCheckToggle.Text = "TeamCheck: " .. (TeamCheck and "ON" or "OFF")
-end)
- 
--- Alternar visibilidade do painel
+-- Alternar visibilidade com Delete
 local function togglePanelVisibility()
     panelVisible = not panelVisible
     mainFrame.Visible = panelVisible
@@ -320,12 +322,12 @@ local function getClosestTarget(centerX, centerY)
         if player ~= LocalPlayer and not isWhitelisted(player) then
             local char = player.Character
             local part = char and char:FindFirstChild(AimPartName)
-            local hum = char and char:FindFirstChildOfClass("Humanoid")
+            local hum  = char and char:FindFirstChildOfClass("Humanoid")
  
-            if char and part and hum and hum.Health > 0 and (not TeamCheck or isEnemy(player)) then
+            if char and part and hum and hum.Health > 0 then
                 local screenPos, onScreen = Camera:WorldToViewportPoint(part.Position)
                 if onScreen then
-                    local dist = Vector2.new(screenPos.X - centerX, screenPos.Y - centerY).Magnitude
+                    local dist   = Vector2.new(screenPos.X - centerX, screenPos.Y - centerY).Magnitude
                     local dist3D = (Camera.CFrame.Position - part.Position).Magnitude
                     if dist < AimbotFOV and dist < closestDist and dist3D <= MaxAimbotDistance then
                         closestDist = dist
@@ -341,10 +343,9 @@ end
  
 -- Loop principal unificado
 RunService.RenderStepped:Connect(function()
-    -- Cache por frame
-    local size = Camera.ViewportSize
-    local centerX = size.X / 2
-    local centerY = size.Y / 2
+    local size      = Camera.ViewportSize
+    local centerX   = size.X / 2
+    local centerY   = size.Y / 2
     local localChar = LocalPlayer.Character
     local localRoot = localChar and localChar:FindFirstChild("HumanoidRootPart")
  
@@ -365,9 +366,9 @@ RunService.RenderStepped:Connect(function()
             if target and target.Character then
                 local part = target.Character:FindFirstChild(AimPartName)
                 if part then
-                    local camPos = Camera.CFrame.Position
+                    local camPos    = Camera.CFrame.Position
                     local direction = (part.Position - camPos).Unit
-                    Camera.CFrame = Camera.CFrame:Lerp(CFrame.new(camPos, camPos + direction), AimSpeed)
+                    Camera.CFrame   = Camera.CFrame:Lerp(CFrame.new(camPos, camPos + direction), AimSpeed)
                 end
             end
         end
@@ -375,7 +376,7 @@ RunService.RenderStepped:Connect(function()
  
     -- ESP
     for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer then
+        if player ~= LocalPlayer and not isWhitelisted(player) then
             local char = player.Character
             local head = char and char:FindFirstChild("Head")
             local root = char and char:FindFirstChild("HumanoidRootPart")
@@ -383,21 +384,28 @@ RunService.RenderStepped:Connect(function()
             local esp  = ESPObjects[player]
  
             if esp then
-                if ESPEnabled and char and head and root and hum and hum.Health > 0 and (not TeamCheck or isEnemy(player)) then
+                if ESPEnabled and char and head and root and hum and hum.Health > 0 then
                     local v1, on1 = Camera:WorldToViewportPoint(head.Position)
                     local v2, on2 = Camera:WorldToViewportPoint(root.Position)
  
                     if on1 or on2 then
-                        -- Cor dinâmica por distância
-                        local dist = localRoot and (localRoot.Position - root.Position).Magnitude or 0
-                        local t = math.clamp(dist / 300, 0, 1)
-                        local color = Color3.fromRGB(255 * (1 - t), 0, 255 * t)
+                        local origin     = Camera.CFrame.Position
+                        local behindWall = hasWallBetween(origin, root.Position, char)
+ 
+                        local color
+                        if behindWall then
+                            color = Color3.fromRGB(255, 165, 0) -- laranja = atrás de parede
+                        else
+                            local dist = localRoot and (localRoot.Position - root.Position).Magnitude or 0
+                            local t    = math.clamp(dist / 300, 0, 1)
+                            color = Color3.fromRGB(255 * (1 - t), 0, 255 * t)
+                        end
  
                         -- Nome
                         esp.Name.Position = Vector2.new(v1.X, v1.Y - 25)
-                        esp.Name.Text = player.Name
-                        esp.Name.Color = color
-                        esp.Name.Visible = true
+                        esp.Name.Text     = player.Name
+                        esp.Name.Color    = color
+                        esp.Name.Visible  = true
  
                         -- Caixa
                         local height = math.abs(v1.Y - v2.Y) * 2
@@ -412,7 +420,7 @@ RunService.RenderStepped:Connect(function()
                         ln[4].From, ln[4].To = Vector2.new(x - hw, y),          Vector2.new(x - hw, y - height)
  
                         for _, l in ipairs(ln) do
-                            l.Color = color
+                            l.Color   = color
                             l.Visible = true
                         end
                     else
