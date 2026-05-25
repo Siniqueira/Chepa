@@ -427,13 +427,13 @@ RunService.RenderStepped:Connect(function()
  
                         -- Cor dinâmica por distância ou parede
                         local color
-                        if behindWall then
-                            color = Color3.fromRGB(255, 165, 0)
-                        else
-                            local dist = localRoot and (localRoot.Position - root.Position).Magnitude or 0
-                            local t    = math.clamp(dist / 300, 0, 1)
-                            color = Color3.fromRGB(255 * (1 - t), 0, 255 * t)
-                        end
+						if isWhitelisted(player) then
+    						color = Color3.fromRGB(0, 255, 0) -- verde = whitelist
+						else
+    					local dist = localRoot and (localRoot.Position - root.Position).Magnitude or 0
+    					local t    = math.clamp(dist / 300, 0, 1)
+    					color = Color3.fromRGB(255 * (1 - t), 0, 255 * t) -- vermelho > azul por distância
+						end
  
                         -- Nome
                         esp.Name.Position = Vector2.new(v1.X, v1.Y - 25)
