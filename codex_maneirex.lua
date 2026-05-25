@@ -10,8 +10,8 @@ local AimbotFOV = 60
 local AimbotKey = Enum.KeyCode.E
 local AimbotKeyType = "KeyCode"
 local ESPEnabled = true
-local ESPBoxEnabled = true      -- toggle da caixa
-local ESPHealthEnabled = true   -- toggle da barra de vida
+local ESPBoxEnabled = true
+local ESPHealthEnabled = true
 local AimbotEnabled = true
 local panelVisible = true
 local MaxAimbotDistance = 200
@@ -39,15 +39,6 @@ local function isWhitelisted(player)
     return Whitelist[player.UserId] == true
 end
  
-local function hasWallBetween(from, to, targetChar)
-    local direction = to - from
-    local rayParams = RaycastParams.new()
-    rayParams.FilterDescendantsInstances = { LocalPlayer.Character, targetChar }
-    rayParams.FilterType = Enum.RaycastFilterType.Exclude
-    local result = workspace:Raycast(from, direction, rayParams)
-    return result ~= nil
-end
- 
 -- Desenho do FOVCircle
 local FOVCircle = Drawing.new("Circle")
 FOVCircle.Color = Color3.fromRGB(255, 0, 0)
@@ -62,6 +53,36 @@ local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "AimAssistPanel"
 screenGui.ResetOnSpawn = false
 screenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+ 
+-- ✅ NOTIFICAÇÃO: função que cria um aviso na tela quando alguém da whitelist entra
+-- Aparece no topo central, some sozinha após 4 segundos
+local function showNotification(text)
+    local notif = Instance.new("TextLabel", screenGui)
+    notif.Size = UDim2.new(0, 320, 0, 44)
+    notif.Position = UDim2.new(0.5, -160, 0, 20)
+    notif.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
+    notif.TextColor3 = Color3.fromRGB(255, 255, 255)
+    notif.Font = Enum.Font.GothamBold
+    notif.TextSize = 16
+    notif.Text = text
+    notif.BorderSizePixel = 0
+    notif.ZIndex = 10
+ 
+    local corner = Instance.new("UICorner", notif)
+    corner.CornerRadius = UDim.new(0, 8)
+ 
+    -- Some após 4 segundos
+    task.delay(4, function()
+        notif:Destroy()
+    end)
+end
+ 
+-- ✅ NOTIFICAÇÃO: detecta quando qualquer jogador entra e checa se está na whitelist
+Players.PlayerAdded:Connect(function(player)
+    if isWhitelisted(player) and player ~= LocalPlayer then
+        showNotification("✅ " .. player.Name .. " entrou no servidor")
+    end
+end)
  
 local mainFrame = Instance.new("Frame")
 mainFrame.Size = UDim2.new(0, 400, 0, 570)
@@ -310,7 +331,6 @@ local function createESP(player)
         table.insert(lines, ln)
     end
  
-    -- Barra de vida: fundo (vermelho) + frente (verde)
     local healthBg = Drawing.new("Line")
     healthBg.Thickness = 4
     healthBg.Color = Color3.fromRGB(180, 0, 0)
@@ -346,7 +366,7 @@ for _, plr in ipairs(Players:GetPlayers()) do
     createESP(plr)
 end
  
--- Aimbot: alvo mais próximo
+-- Aimbot: alvo mais próximo — só mira em quem NÃO está na whitelist
 local function getClosestTarget(centerX, centerY)
     local closestDist = math.huge
     local closestPlayer = nil
@@ -407,9 +427,10 @@ RunService.RenderStepped:Connect(function()
         end
     end
  
-    -- ESP
+    -- ✅ ESP: processa TODOS os jogadores (não pula whitelist)
+    -- O aimbot ainda ignora a whitelist, mas o ESP mostra todos com cores diferentes
     for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer and not isWhitelisted(player) then
+        if player ~= LocalPlayer then
             local char = player.Character
             local head = char and char:FindFirstChild("Head")
             local root = char and char:FindFirstChild("HumanoidRootPart")
@@ -422,18 +443,15 @@ RunService.RenderStepped:Connect(function()
                     local v2, on2 = Camera:WorldToViewportPoint(root.Position)
  
                     if on1 or on2 then
-                        local origin     = Camera.CFrame.Position
-                        local behindWall = hasWallBetween(origin, root.Position, char)
- 
-                        -- Cor dinâmica por distância ou parede
+                        -- ✅ COR: whitelist = verde fixo, inimigos = vermelho > azul por distância
                         local color
-						if isWhitelisted(player) then
-    						color = Color3.fromRGB(0, 255, 0) -- verde = whitelist
-						else
-    					local dist = localRoot and (localRoot.Position - root.Position).Magnitude or 0
-    					local t    = math.clamp(dist / 300, 0, 1)
-    					color = Color3.fromRGB(255 * (1 - t), 0, 255 * t) -- vermelho > azul por distância
-						end
+                        if isWhitelisted(player) then
+                            color = Color3.fromRGB(0, 255, 0)
+                        else
+                            local dist = localRoot and (localRoot.Position - root.Position).Magnitude or 0
+                            local t    = math.clamp(dist / 300, 0, 1)
+                            color = Color3.fromRGB(255 * (1 - t), 0, 255 * t)
+                        end
  
                         -- Nome
                         esp.Name.Position = Vector2.new(v1.X, v1.Y - 25)
@@ -462,20 +480,18 @@ RunService.RenderStepped:Connect(function()
                             for _, l in ipairs(esp.Box) do l.Visible = false end
                         end
  
-                        -- Barra de vida (lado esquerdo da caixa)
+                        -- Barra de vida
                         if ESPHealthEnabled then
-                            local maxHp     = hum.MaxHealth > 0 and hum.MaxHealth or 100
-                            local hpRatio   = math.clamp(hum.Health / maxHp, 0, 1)
-                            local barX      = x - hw - 6        -- 6px à esquerda da caixa
-                            local barTop    = y - height
-                            local barBot    = y
+                            local maxHp   = hum.MaxHealth > 0 and hum.MaxHealth or 100
+                            local hpRatio = math.clamp(hum.Health / maxHp, 0, 1)
+                            local barX    = x - hw - 6
+                            local barTop  = y - height
+                            local barBot  = y
  
-                            -- Fundo (vermelho, altura total)
                             esp.HealthBg.From    = Vector2.new(barX, barTop)
                             esp.HealthBg.To      = Vector2.new(barX, barBot)
                             esp.HealthBg.Visible = true
  
-                            -- Preenchimento (verde, proporcional ao HP)
                             local fillBot = barTop + height * (1 - hpRatio)
                             local hpColor = Color3.fromRGB(255 * (1 - hpRatio), 255 * hpRatio, 0)
                             esp.HealthFill.From    = Vector2.new(barX, fillBot)
@@ -488,14 +504,12 @@ RunService.RenderStepped:Connect(function()
                         end
  
                     else
-                        -- Fora da tela
                         esp.Name.Visible = false
                         for _, l in ipairs(esp.Box) do l.Visible = false end
                         esp.HealthBg.Visible   = false
                         esp.HealthFill.Visible = false
                     end
                 else
-                    -- ESP desligado ou jogador morto
                     esp.Name.Visible = false
                     for _, l in ipairs(esp.Box) do l.Visible = false end
                     esp.HealthBg.Visible   = false
@@ -505,3 +519,4 @@ RunService.RenderStepped:Connect(function()
         end
     end
 end)
+ 
